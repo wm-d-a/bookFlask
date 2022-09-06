@@ -8,6 +8,10 @@ from flask import request
 from werkzeug.urls import url_parse
 from datetime import datetime
 from app.forms import EditProfileForm
+import logging
+from logging.handlers import SMTPHandler
+from logging.handlers import RotatingFileHandler
+import os
 
 
 @app.route('/')
@@ -92,7 +96,7 @@ def before_request():
 @app.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
 def edit_profile():
-    form = EditProfileForm()
+    form = EditProfileForm(current_user.username)
     if form.validate_on_submit():
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
@@ -104,3 +108,30 @@ def edit_profile():
         form.username.about_me = current_user.about_me
     return render_template('edit_profile.html', title='Edit Profile', form=form)
 
+
+if not app.debug:
+    #     if app.config['MAIL_SERVER']:
+    #         auth = None
+    #         if app.config['MAIL_USERNAME'] or app.config['MAIL_PASSWORD']:
+    #             auth = (app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
+    #         secure = None
+    #         if app.config['MAIL_USE_TLS']:
+    #             secure = ()
+    #         mail_handler = SMTPHandler(
+    #             mailhost=(app.config['MAIL_SERVER'], app.config['MAIL_PORT']),
+    #             fromaddr='no-reply@' + app.config['MAIL_SERVER'],
+    #             toaddrs=app.config['ADMINS'], subject='Microblog Failure',
+    #             credentials=auth, secure=secure
+    #         )
+    #         mail_handler.setLevel(logging.ERROR)
+    #         app.logger.addHandler(mail_handler)
+
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    file_handler = RotatingFileHandler('logs/microblog.log', maxBytes=10240, backupCount=10)
+    file_handler.setFormatter(
+        logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Microblog startup')
